@@ -1,0 +1,80 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "temporal-ai-chef"
+version = "0.1.0"
+description = "A Temporal CLI demo application showing deterministic but not pre-determined workflows with LLM integration"
+authors = [
+    {name = "Steve Androulakis", email = "steve.androulakis@temporal.io"},
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.8.1"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "temporalio>=1.7.0",
+    "openai>=1.0.0",
+    "python-dotenv>=1.0.0",
+    "rich>=13.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "black",
+    "isort",
+    "flake8",
+    "mypy",
+]
+
+[project.scripts]
+temporal-ai-chef = "temporal_ai_chef.run_chef:main_sync"
+chef-worker = "temporal_ai_chef.worker:main_sync"
+chef-demo = "temporal_ai_chef.test_end_to_end:main"
+chef-auto = "temporal_ai_chef.run_with_worker:main"
+
+[project.urls]
+Homepage = "https://github.com/steveandroulakis/temporal-ai-chef"
+Repository = "https://github.com/steveandroulakis/temporal-ai-chef"
+
+[tool.black]
+line-length = 88
+
+[tool.isort]
+profile = "black"
+
+[tool.flake8]
+max-line-length = 88
+ignore = ["E203", "W503"]
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["."]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests",
+]
