@@ -33,6 +33,8 @@ class ToolSelectionInput:
 class IngredientsSelectionInput:
     step: str
     ingredients: List[str]
+    plan_context: List[str] = None
+    step_index: int = 0
 
 
 class ChefActivities:
@@ -68,7 +70,7 @@ class ChefActivities:
         activity.logger.info(f"Using tool: {input.tool_name} for step: {input.step_description}")
         
         # Simulate work with random delay (1.5 to 9 seconds)
-        delay = random.uniform(1.5, 9.0)
+        delay = random.uniform(1.0, 2.0)
         time.sleep(delay)
         
         result = f"Successfully used {input.tool_name} for: {input.step_description}"
@@ -176,17 +178,23 @@ class ChefActivities:
         # Try LLM first, fall back to mock if not available
         try:
             from .llm_client import select_ingredients_with_llm
-            selected_ingredients = select_ingredients_with_llm(input.step, input.ingredients)
+            activity.logger.info(f"Calling LLM for step: '{input.step}' with context: step_index={input.step_index}")
+            selected_ingredients = select_ingredients_with_llm(
+                input.step, 
+                input.ingredients, 
+                input.plan_context, 
+                input.step_index
+            )
             
             if selected_ingredients:
-                activity.logger.info(f"Selected ingredients using LLM: {selected_ingredients}")
+                activity.logger.info(f"LLM returned ingredients: {selected_ingredients}")
                 return selected_ingredients
             else:
-                activity.logger.warning("LLM ingredients selection failed, using mock selection")
+                activity.logger.warning("LLM returned no ingredients, using mock selection")
                 return self._get_mock_ingredients(input.step)
                 
         except Exception as e:
-            activity.logger.warning(f"LLM ingredients selection failed: {e}, using mock selection")
+            activity.logger.error(f"LLM ingredients selection failed with error: {e}, using mock selection")
             return self._get_mock_ingredients(input.step)
     
     def _get_mock_ingredients(self, step: str) -> List[str]:
@@ -207,4 +215,4 @@ class ChefActivities:
             return ["Bread", "Eggs", "Milk", "Butter"]
         else:
             # Default to basic ingredients
-            return ["Salt", "Black Pepper", "Olive Oil"]
+            return []

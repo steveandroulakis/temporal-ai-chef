@@ -31,6 +31,9 @@ class WorkflowState:
     current_tool: Optional[str]
     used_ingredients: List[str]
     current_ingredients: List[str]
+    step_tools: List[str]  # Tool used for each step (index matches step index)
+    step_ingredients: List[List[str]]  # Ingredients used for each step
+    current_tool_result: Optional[str]  # Result from current tool usage
     is_complete: bool
     status: str  # "planning", "executing", "completed"
     step_status: str  # "selecting_tool", "using_tool", "step_complete"
@@ -49,6 +52,9 @@ class ChefWorkflow:
             current_tool=None,
             used_ingredients=[],
             current_ingredients=[],
+            step_tools=[],
+            step_ingredients=[],
+            current_tool_result=None,
             is_complete=False,
             status="planning",
             step_status=""
@@ -116,7 +122,9 @@ class ChefWorkflow:
             # Determine which ingredients to use for this step
             ingredients_selection_input = IngredientsSelectionInput(
                 step=step,
-                ingredients=ingredients
+                ingredients=ingredients,
+                plan_context=plan,
+                step_index=i
             )
             step_ingredients = await workflow.execute_activity_method(
                 chef_activities.get_ingredients_for_step,
@@ -138,17 +146,24 @@ class ChefWorkflow:
                 step_description=step
             )
             
-            await workflow.execute_activity_method(
+            tool_result = await workflow.execute_activity_method(
                 chef_activities.use_tool,
                 tool_input,
                 start_to_close_timeout=timedelta(seconds=30)
             )
+            
+            # Store the tool usage result in state
+            self._state.current_tool_result = tool_result
             
             # Update state - step completed
             self._state.step_status = "step_complete"
             self._state.completed_steps.append(step)
             if tool not in self._state.used_tools:
                 self._state.used_tools.append(tool)
+            
+            # Track tool and ingredients used for this specific step
+            self._state.step_tools.append(tool)
+            self._state.step_ingredients.append(step_ingredients)
             
             # Track used ingredients
             for ingredient in step_ingredients:
@@ -159,6 +174,7 @@ class ChefWorkflow:
         self._state.current_step = None
         self._state.current_tool = None
         self._state.current_ingredients = []
+        self._state.current_tool_result = None
         self._state.is_complete = True
         self._state.status = "completed"
         self._state.step_status = ""

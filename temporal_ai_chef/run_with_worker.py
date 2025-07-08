@@ -147,7 +147,7 @@ async def run_workflow_with_worker(recipe: str = "Chicken Parmesan", goal: str =
                 if state.status == "executing" and not execution_started:
                     console.print(Panel(
                         "",
-                        title="🔥 Execution",
+                        title="🔥 Cooking",
                         style="bright_red",
                         box=ROUNDED
                     ))

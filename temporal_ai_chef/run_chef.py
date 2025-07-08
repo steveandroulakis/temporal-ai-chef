@@ -17,7 +17,7 @@ from rich.box import HEAVY
 from .workflow import ChefWorkflow, ChefWorkflowInput
 
 
-async def main():
+async def main(recipe: str = None):
     """Main CLI entry point for Temporal AI Chef"""
     console = Console()
     
@@ -29,12 +29,16 @@ async def main():
     ))
     console.print()
     
-    # Get recipe from user
-    recipe = console.input("[bold]> I'm ready to cook:[/bold] ").strip()
-    
+    # Get recipe from user if not provided
     if not recipe:
-        console.print("[red]❌ Please enter a recipe![/red]")
-        return
+        recipe = console.input("[bold]> I'm ready to cook:[/bold] ").strip()
+        
+        if not recipe:
+            console.print("[red]❌ Please enter a recipe![/red]")
+            return
+    else:
+        console.print(f"[bold]> I'm ready to cook:[/bold] {recipe}")
+        console.print()
     
     try:
         # Connect to Temporal server
@@ -119,40 +123,42 @@ async def main():
                     console.print()
                     console.print(Panel(
                         "",
-                        title="🔥 Execution",
+                        title="🔥 Cooking",
                         style="bright_red"
                     ))
                     execution_started = True
                 
-                # Show step execution details
-                if state.status == "executing" and state.current_step and state.current_step_index != last_step_index:
+                # Show step execution details - only when we have tool and step_status is using_tool
+                if (state.status == "executing" and state.current_step and state.current_step_index != last_step_index 
+                    and state.step_status == "using_tool" and state.current_tool and state.current_ingredients):
+                    
                     step_num = state.current_step_index + 1
                     console.print(f"\n[bold]--- Step {step_num}: {state.current_step} ---[/bold]")
+                    
+                    # Show tool usage with decision immediately
+                    ingredients_text = ", ".join(state.current_ingredients) if state.current_ingredients else "ingredients"
+                    console.print(f"🤖 Decision: Agent is using [yellow]{state.current_tool}[/yellow] with [cyan]{ingredients_text}[/cyan].")
+                    
                     last_step_index = state.current_step_index
                     step_announced = True
-                    tool_announced = False
-                    # Brief pause to let user read the step
-                    await asyncio.sleep(2.4)
-                
-                # Show tool usage with decision
-                if state.step_status == "using_tool" and state.current_tool and not tool_announced:
-                    ingredients_text = ", ".join(state.current_ingredients) if state.current_ingredients else "ingredients"
-                    console.print(f"🤔 Decision: Use [yellow]{state.current_tool}[/yellow] with [cyan]{ingredients_text}[/cyan].")
+                    tool_announced = True
                     
                     # Show execution status and wait for the actual activity to complete
                     with console.status("[purple]Executing...[/purple]", spinner="dots"):
-                        # Wait for the step to complete (the actual use_tool activity takes 0.5-3 seconds)
+                        # Wait for the step to complete (the actual use_tool activity takes 1-2 seconds)
                         while state.step_status == "using_tool":
                             await asyncio.sleep(0.3)
                             try:
                                 state = await handle.query(ChefWorkflow.get_state)
                             except:
                                 break
-                    
-                    tool_announced = True
                 
                 # Show step completion
                 if state.step_status == "step_complete" and step_announced and tool_announced:
+                    # Display tool usage result if available
+                    if state.current_tool_result:
+                        console.print(f"✅ {state.current_tool_result}")
+                    
                     completed_steps.add(state.current_step_index)
                     step_announced = False
                     tool_announced = False
@@ -193,7 +199,14 @@ async def main():
 
 def main_sync():
     """Synchronous entry point for console script"""
-    asyncio.run(main())
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="Temporal AI Chef - Interactive cooking assistant")
+    parser.add_argument("--recipe", help="Recipe to cook (if not provided, you'll be prompted)")
+    
+    args = parser.parse_args()
+    
+    asyncio.run(main(args.recipe))
 
 if __name__ == "__main__":
     main_sync()
