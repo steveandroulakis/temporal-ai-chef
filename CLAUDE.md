@@ -26,6 +26,10 @@ uv run chef-worker
 
 # Terminal 2: Run the interactive CLI
 uv run temporal-ai-chef
+# OR with recipe flag: uv run temporal-ai-chef --recipe "Chicken Parmesan"
+
+# Automated version with embedded worker
+uv run chef-auto --recipe "Chicken Parmesan"
 ```
 
 **Quick Testing & Demos**:
@@ -134,7 +138,8 @@ def get_state(self) -> WorkflowState:
 
 # Enhanced state includes:
 # recipe, plan, current_step, current_step_index, completed_steps, 
-# used_tools, current_tool, is_complete, status, step_status
+# used_tools, current_tool, current_tool_result, used_ingredients, 
+# current_ingredients, is_complete, status, step_status
 ```
 
 ### Real-time CLI Architecture
@@ -170,7 +175,8 @@ while True:
 - `workflow.py`: Core workflow logic with enhanced state management and query methods
 - `activities.py`: **LLM-powered activities** with fallback implementations (plan generation, tool selection, simulation)
 - `worker.py`: Temporal worker that executes activities with proper thread pool
-- `run_chef.py`: **Interactive CLI client** with real-time state polling and formatted display
+- `run_chef.py`: **Interactive CLI client** with real-time state polling and formatted display (supports `--recipe` flag)
+- `run_with_worker.py`: **Automated CLI client** with embedded worker management (`chef-auto` command)
 - `data/`: JSON files containing tools (20 items) and ingredients (37 items)
 - `test_end_to_end.py`: **Primary demo script** - 30-second complete demonstration
 - `test_different_recipes.py`: **LLM showcase** - demonstrates dynamic plan generation for 4 different recipes
@@ -214,7 +220,10 @@ class PlanInput:
 - Real-time plan generation (planning phase)
 - Step-by-step execution progress
 - Tool usage with visual indicators (emojis)
+- Tool usage results (✅ Successfully used [tool] for: [step])
 - Completion status with summary
+
+**Race Condition Prevention**: The UI waits for `step_status == "using_tool"` before displaying step information to ensure ingredients are correctly aligned with their respective steps.
 
 ### Actual CLI Output Format
 The implemented CLI matches the PRD specification exactly:
@@ -272,7 +281,8 @@ Each recipe produces completely different, contextually appropriate, professiona
 **For Temporal Concept Demonstrations**:
 1. `uv run chef-demo` - Shows complete deterministic but not pre-determined workflow
 2. `uv run python temporal_ai_chef/test_different_recipes.py` - Demonstrates dynamic LLM-driven plan generation
-3. `uv run temporal-ai-chef` - Interactive experience for audience participation
+3. `uv run temporal-ai-chef --recipe "Chicken Caesar Salad"` - Interactive experience for audience participation
+4. `uv run chef-auto --recipe "Pasta Carbonara"` - Automated demo with embedded worker
 
 **Key Talking Points**:
 - Workflows are deterministic (reliable execution) but not pre-determined (LLM decides steps)
